@@ -1,5 +1,14 @@
 # Chatbot [NLP Project]
+
+## Dataset
 The dataset is currently missing, will be updated soon.
+
+## Frontend
+Its made using [django](https://www.djangoproject.com/) framework.
+To start the server. Please run
+```py
+python manage.py runserver
+```
 
 Members - 
 1. [Satyam](https://github.com/satyams2812)

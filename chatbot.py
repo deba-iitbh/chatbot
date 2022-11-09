@@ -3,7 +3,7 @@ Chatbot that integrates different models to parse the text and
 get the most probable answers.
 
 Instruction to run:
-    python charbot
+    python chatbot.py
 """
 
 import nltk
