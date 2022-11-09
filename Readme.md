@@ -6,7 +6,8 @@ The dataset is currently missing, will be updated soon.
 ## Frontend
 Its made using [django](https://www.djangoproject.com/) framework.
 To start the server. Please run
-```py
+```shell
+source chating/.env
 python manage.py runserver
 ```
 
