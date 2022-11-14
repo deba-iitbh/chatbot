@@ -4,13 +4,15 @@ from tqdm import tqdm
 
 
 def loss_fn(outputs, targets):
-    return nn.BCEWithLogitsLoss()(outputs, targets.view(-1, 1))
+    mseloss = nn.MSELoss()
+    return torch.sqrt(mseloss(outputs.float(), targets.float()))
 
 
 def train_fn(data_loader, model, optimizer, device, scheduler):
     model.train()
-
-    for d in tqdm(data_loader, total=len(data_loader)):
+    pgbar = tqdm(data_loader, total=len(data_loader), unit="batch")
+    avg_loss = 0
+    for d in pgbar:
         ids = d["ids"]
         token_type_ids = d["token_type_ids"]
         mask = d["mask"]
@@ -23,11 +25,13 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
 
         optimizer.zero_grad()
         outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-
         loss = loss_fn(outputs, targets)
+        pgbar.set_postfix(loss = loss.item())
+        avg_loss += loss.item()
         loss.backward()
         optimizer.step()
         scheduler.step()
+    return avg_loss/len(data_loader)
 
 
 def eval_fn(data_loader, model, device):
