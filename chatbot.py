@@ -16,10 +16,6 @@ from tqdm import trange
 from gensim.test.utils import datapath, get_tmpfile
 from gensim.scripts.glove2word2vec import glove2word2vec
 
-# glove_file = datapath("glove.txt")
-# tmp_file = get_tmpfile("word2vec.txt")
-# _, _ = glove2word2vec(glove_file, tmp_file)
-
 # Constants
 nltk.download("wordnet")
 tokenizer = RegexpTokenizer(r"\w+")
@@ -75,12 +71,8 @@ def preprocessing(df, model_type="fasttext"):
     for i in trange(df.shape[0]):
         para[i] = preprocess_text(str(df.iloc[i][0]))
 
-    if model_type == "doc2vec":
-        model_para = Doc2Vec(para, min_count=1)
     if model_type == "fasttext":
         model_para = FastText(para, min_count=1)
-    elif model_type == "glove":
-        model_para = KeyedVectors.load_word2vec_format(tmp_file)
     else:
         model_para = Word2Vec(para, min_count=1)
     model_para.init_sims(replace=True)
@@ -121,18 +113,21 @@ def get_answers(df, query1, para, model_para):
 if __name__ == "__main__":
     df = pd.read_csv("./input/q_a.csv", encoding="unicode_escape")
     print("[Info] Loaded Dataframe")
-    # Available options - fasttext, glove, word2vec
+    # Available options - fasttext, word2vec
     resource = preprocessing(df, model_type = "fasttext")
     print(
         "Hello user",
         "How may I help you",
-        "For exiting from the chatbot,press 0",
+        "For exiting from the chatbot,just say bye",
         sep="\n",
     )
-    x = 1
-    while x != 0:
+
+    while True:
         print("\n\nEnter query")
         query = input()
+        if query.lower() == "bye":
+            print("Thank you for using the chatbot.I hope you had a great time\n")
+            break
         q = preprocess_text(query)
         q1 = ""
         for d in q:
@@ -140,10 +135,6 @@ if __name__ == "__main__":
         res, dist = get_answers(df, q1, resource["para"], resource["model_para"])
         print(dist)
         if dist < 1:
-            print(res)
+            print(res, "\n")
         else:
-            print("Sorry I don't have the answer. Can you please rephrase the query")
-        print("If you have any more queries then press 1 else press 0")
-        x = int(input())
-        if x == 0:
-            print("Thank you for using the chatbot.I hope you had a great time")
+            print("Sorry I don't have the answer. Can you please rephrase the query\n")
