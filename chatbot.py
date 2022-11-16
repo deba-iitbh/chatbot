@@ -12,12 +12,13 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from gensim.models import FastText, Word2Vec, KeyedVectors, Doc2Vec
 import pandas as pd
+from tqdm import trange
 from gensim.test.utils import datapath, get_tmpfile
 from gensim.scripts.glove2word2vec import glove2word2vec
 
-glove_file = datapath("glove.txt")
-tmp_file = get_tmpfile("word2vec.txt")
-_, _ = glove2word2vec(glove_file, tmp_file)
+# glove_file = datapath("glove.txt")
+# tmp_file = get_tmpfile("word2vec.txt")
+# _, _ = glove2word2vec(glove_file, tmp_file)
 
 # Constants
 nltk.download("wordnet")
@@ -66,34 +67,26 @@ def answer_preprocess(file):
     return str1
 
 
-def preprocessing(df, df_combined, model_type="fasttext"):
+def preprocessing(df, model_type="fasttext"):
     """
     Pre-process the text for training.
     """
-    topics = [[] for _ in range(df.shape[0])]
     para = [[] for _ in range(df.shape[0])]
-    for i in range(df_combined.shape[0]):
-        topics[i] = preprocess_text(str(df_combined.iloc[i][0]))
-        para[i] = preprocess_text(str(df_combined.iloc[i][1]))
+    for i in trange(df.shape[0]):
+        para[i] = preprocess_text(str(df.iloc[i][0]))
+
     if model_type == "doc2vec":
-        model_topic = Doc2Vec(topics, min_count=1)
         model_para = Doc2Vec(para, min_count=1)
     if model_type == "fasttext":
-        model_topic = FastText(topics, min_count=1)
         model_para = FastText(para, min_count=1)
     elif model_type == "glove":
         model_para = KeyedVectors.load_word2vec_format(tmp_file)
-        model_topic = KeyedVectors.load_word2vec_format(tmp_file)
     else:
-        model_topic = Word2Vec(topics, min_count=1)
         model_para = Word2Vec(para, min_count=1)
     model_para.init_sims(replace=True)
-    model_topic.init_sims(replace=True)
     return {
         "para": para,
-        "topic": topics,
         "model_para": model_para,
-        "model_topic": model_topic,
     }
 
 
@@ -101,10 +94,10 @@ def WMdistance(model, doc1, doc2):
     """
     Compute the Word Mover's distance between two documents.
     """
-    return model.wmdistance(doc1, doc2)
+    return model.wv.wmdistance(doc1, doc2)
 
 
-def get_answers(df_combined, query1, para, model_para):
+def get_answers(df, query1, para, model_para):
     """
     Get the answer from the model.
     """
@@ -114,11 +107,11 @@ def get_answers(df_combined, query1, para, model_para):
     min1 = 1000
     result = ""
     distance = float("inf")
-    for i in range(len(df_combined)):
+    for i in range(len(df)):
         distance = WMdistance(model_para, q, para[i])
         if distance < min1:
             min1 = distance
-            result = df_combined.iloc[i][2]
+            result = df.iloc[i][1]
         count = count + 1
         # print ('distance = %.3f' % distance)
     return result, distance
@@ -126,10 +119,10 @@ def get_answers(df_combined, query1, para, model_para):
 
 ### initiating chat process
 if __name__ == "__main__":
-    df = pd.read_csv("Training.csv", encoding="unicode_escape")
-    df_combined = df
+    df = pd.read_csv("./input/q_a.csv", encoding="unicode_escape")
+    print("[Info] Loaded Dataframe")
     # Available options - fasttext, glove, word2vec
-    resource = preprocessing(df, df_combined, model_type = "fasttext")
+    resource = preprocessing(df, model_type = "fasttext")
     print(
         "Hello user",
         "How may I help you",
@@ -145,7 +138,8 @@ if __name__ == "__main__":
         for d in q:
             q1 = q1 + d + " "
         res, dist = get_answers(df, q1, resource["para"], resource["model_para"])
-        if dist < 0.7:
+        print(dist)
+        if dist < 1:
             print(res)
         else:
             print("Sorry I don't have the answer. Can you please rephrase the query")
