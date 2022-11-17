@@ -3,13 +3,15 @@ import dataset
 import engine
 import torch
 import pandas as pd
+import logging
+logging.disable(logging.INFO)
 
 from model import BERTBaseUncased
 from torch.utils.data import DataLoader
 from sklearn import model_selection
 from sklearn import metrics
 from transformers import AdamW
-from transformers import get_linear_schedule_with_warmup
+from transformers import get_constant_schedule_with_warmup
 from tqdm import trange
 
 import warnings
@@ -26,7 +28,7 @@ def run():
     df_valid:pd.DataFrame = df_valid.reset_index(drop=True)
 
     train_dataset = dataset.BERTDataset(
-        qn=df_train.q.values, ans=df_train.a.values
+        qn=df_train.Question.values, ans=df_train.Answer.values
     )
 
     train_data_loader = DataLoader(
@@ -34,7 +36,7 @@ def run():
     )
 
     valid_dataset = dataset.BERTDataset(
-        qn=df_valid.q.values, ans=df_valid.a.values
+        qn=df_valid.Question.values, ans=df_valid.Answer.values
     )
 
     valid_data_loader = DataLoader(
@@ -48,41 +50,39 @@ def run():
     model = BERTBaseUncased()
     model.to(device)
 
-    param_optimizer = list(model.named_parameters())
-    no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
-    optimizer_parameters = [
-        {
-            "params": [
-                p for n, p in param_optimizer if not any(nd in n for nd in no_decay)
-            ],
-            "weight_decay": 0.001,
-        },
-        {
-            "params": [
-                p for n, p in param_optimizer if any(nd in n for nd in no_decay)
-            ],
-            "weight_decay": 0.0,
-        },
-    ]
-
-    num_train_steps = int(len(df_train) / config.TRAIN_BATCH_SIZE * config.EPOCHS)
-    optimizer = AdamW(optimizer_parameters, lr=3e-5)
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
+    optimizer = AdamW(model.parameters(), lr=3e-5)
+    scheduler = get_constant_schedule_with_warmup(
+        optimizer, num_warmup_steps=5, last_epoch=-1
     )
 
-    # best_accuracy = 0
+    best_eval_loss = float('inf')
     for _ in trange(config.EPOCHS, unit="epoch"):
         total_loss = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
         print(total_loss)
-        # outputs, targets = engine.eval_fn(valid_data_loader, model, device)
-        # outputs = np.array(outputs) >= 0.5
-        # accuracy = metrics.accuracy_score(targets, outputs)
-        # print(f"Accuracy Score = {accuracy}")
-        # if accuracy > best_accuracy:
-        #     torch.save(model.state_dict(), config.MODEL_PATH)
-        #     best_accuracy = accuracy
+        eval_loss = engine.eval_fn(valid_data_loader, model, device)
+        print(f"Eval Loss = {eval_loss}")
+        if eval_loss < best_eval_loss:
+            # torch.save(model.state_dict(), config.MODEL_PATH)
+            best_eval_loss = eval_loss
 
+def run_inference(q):
+    inf_dataset = dataset.BERTDataset(
+        qn=pd.Series(q)
+    )
+    inf_data_loader = DataLoader(
+        inf_dataset, batch_size=1
+    )
+
+    device = torch.device(config.DEVICE)
+    model = BERTBaseUncased()
+    model.load_state_dict(torch.load(config.MODEL_PATH))
+    model.to(device)
+
+    res = engine.inference_fn(inf_data_loader, model, device)
+    return res
 
 if __name__ == "__main__":
     run()
+
+    # q = "Location of IIT Bhilai?"
+    # print(run_inference(q))

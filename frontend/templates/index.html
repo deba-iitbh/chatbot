@@ -31,7 +31,9 @@
               </div>
       
               <div class="msg-text">
-                Hi, welcome to SimpleChat! Go ahead and send me a message. 😄
+                Hello user,
+        How may I help you,
+        For exiting from the chatbot,just say bye
               </div>
             </div>
           </div>
@@ -53,7 +55,9 @@
           </div>
         </main>
       
-        <form  class="msger-inputarea" id="msger-inputarea">
+        <form action="senddata" method="post" class="msger-inputarea" id="msger-inputarea">
+          {% csrf_token %}
+
           <input type="text" id="msger-input" class="msger-input" placeholder="Enter your message...">
           <button type="submit" id="msger-chat" class="msger-send-btn">Send</button>
         </form>

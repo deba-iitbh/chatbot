@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+from config import TOKENIZER
 import torch.nn as nn
 from tqdm import tqdm
 
@@ -36,10 +38,10 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
 
 def eval_fn(data_loader, model, device):
     model.eval()
-    fin_targets = []
-    fin_outputs = []
+    pgbar = tqdm(data_loader, total=len(data_loader), unit="batch")
+    avg_loss = 0
     with torch.no_grad():
-        for d in tqdm(data_loader, total=len(data_loader)):
+        for d in pgbar:
             ids = d["ids"]
             token_type_ids = d["token_type_ids"]
             mask = d["mask"]
@@ -48,9 +50,36 @@ def eval_fn(data_loader, model, device):
             ids = ids.to(device, dtype=torch.long)
             token_type_ids = token_type_ids.to(device, dtype=torch.long)
             mask = mask.to(device, dtype=torch.long)
-            targets = targets.to(device, dtype=torch.float)
+            targets = targets.to(device, dtype=torch.long)
 
             outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-            fin_targets.extend(targets.cpu().detach().numpy().tolist())
-            fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
-    return fin_outputs, fin_targets
+            loss = loss_fn(outputs, targets)
+            pgbar.set_postfix(loss = loss.item())
+            avg_loss += loss.item()
+    return avg_loss/len(data_loader)
+
+def inference_fn(data_loader, model, device):
+    model.eval()
+    fin_outputs = []
+    pgbar = tqdm(data_loader, total=len(data_loader), unit="batch")
+    with torch.no_grad():
+        for d in pgbar:
+            ids = d["ids"]
+            token_type_ids = d["token_type_ids"]
+            mask = d["mask"]
+
+            ids = ids.to(device, dtype=torch.long)
+            token_type_ids = token_type_ids.to(device, dtype=torch.long)
+            mask = mask.to(device, dtype=torch.long)
+            outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
+            final_output = outputs.cpu().detach().numpy()[0]
+            final_output = final_output.astype(int) + 1000
+            final_output = final_output.tolist()
+
+            # Detokenize
+            tokens = TOKENIZER.convert_ids_to_tokens(final_output)
+            print(tokens)
+            text = ' '.join([x for x in tokens])
+            fine_text = text.replace(' ##', '')
+            final_output.extend(fine_text)
+    return fin_outputs

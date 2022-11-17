@@ -75,7 +75,6 @@ def preprocessing(df, model_type="fasttext"):
         model_para = FastText(para, min_count=1)
     else:
         model_para = Word2Vec(para, min_count=1)
-    model_para.init_sims(replace=True)
     return {
         "para": para,
         "model_para": model_para,
@@ -106,7 +105,7 @@ def get_answers(df, query1, para, model_para):
             result = df.iloc[i][1]
         count = count + 1
         # print ('distance = %.3f' % distance)
-    return result, distance
+    return result, min1
 
 
 ### initiating chat process
@@ -114,7 +113,7 @@ if __name__ == "__main__":
     df = pd.read_csv("./input/q_a.csv", encoding="unicode_escape")
     print("[Info] Loaded Dataframe")
     # Available options - fasttext, word2vec
-    resource = preprocessing(df, model_type = "fasttext")
+    resource = preprocessing(df, model_type = "word2vec")
     print(
         "Hello user",
         "How may I help you",
