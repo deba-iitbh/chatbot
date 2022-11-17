@@ -4,12 +4,12 @@ import engine
 import torch
 import pandas as pd
 import logging
+import numpy as np
 logging.disable(logging.INFO)
 
 from model import BERTBaseUncased
 from torch.utils.data import DataLoader
 from sklearn import model_selection
-from sklearn import metrics
 from transformers import AdamW
 from transformers import get_constant_schedule_with_warmup
 from tqdm import trange
@@ -28,7 +28,7 @@ def run():
     df_valid:pd.DataFrame = df_valid.reset_index(drop=True)
 
     train_dataset = dataset.BERTDataset(
-        qn=df_train.Question.values, ans=df_train.Answer.values
+        q1=df_train.Question.values, ans=df_train.Answer.values, label = df_train.Label.values
     )
 
     train_data_loader = DataLoader(
@@ -36,7 +36,7 @@ def run():
     )
 
     valid_dataset = dataset.BERTDataset(
-        qn=df_valid.Question.values, ans=df_valid.Answer.values
+        q1=df_valid.Question.values, ans=df_valid.Answer.values
     )
 
     valid_data_loader = DataLoader(
@@ -62,15 +62,17 @@ def run():
         eval_loss = engine.eval_fn(valid_data_loader, model, device)
         print(f"Eval Loss = {eval_loss}")
         if eval_loss < best_eval_loss:
-            # torch.save(model.state_dict(), config.MODEL_PATH)
+            model.save_pretrained(config.MODEL_PATH)
             best_eval_loss = eval_loss
 
 def run_inference(q):
+    df = pd.read_csv(config.TRAINING_FILE)
+    qn = [q] * df.shape[0]
     inf_dataset = dataset.BERTDataset(
-        qn=pd.Series(q)
+        q1=pd.Series(qn), ans = df.Answer.values 
     )
     inf_data_loader = DataLoader(
-        inf_dataset, batch_size=1
+        inf_dataset, batch_size=8
     )
 
     device = torch.device(config.DEVICE)
@@ -79,10 +81,10 @@ def run_inference(q):
     model.to(device)
 
     res = engine.inference_fn(inf_data_loader, model, device)
-    return res
+    ans = np.argmax(res)
+    return df.iloc[ans].Answer
 
 if __name__ == "__main__":
     run()
-
-    # q = "Location of IIT Bhilai?"
-    # print(run_inference(q))
+    q = "Location of IIT Bhilai?"
+    print(run_inference(q))

@@ -1,13 +1,6 @@
 import torch
-import numpy as np
 from config import TOKENIZER
-import torch.nn as nn
 from tqdm import tqdm
-
-
-def loss_fn(outputs, targets):
-    mseloss = nn.MSELoss()
-    return torch.sqrt(mseloss(outputs.float(), targets.float()))
 
 
 def train_fn(data_loader, model, optimizer, device, scheduler):
@@ -18,7 +11,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
         ids = d["ids"]
         token_type_ids = d["token_type_ids"]
         mask = d["mask"]
-        targets = d["targets"]
+        targets = d["target"]
 
         ids = ids.to(device, dtype=torch.long)
         token_type_ids = token_type_ids.to(device, dtype=torch.long)
@@ -26,8 +19,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
         targets = targets.to(device, dtype=torch.long)
 
         optimizer.zero_grad()
-        outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-        loss = loss_fn(outputs, targets)
+        loss, score = model(ids=ids, mask=mask, token_type_ids=token_type_ids, labels = targets)
         pgbar.set_postfix(loss = loss.item())
         avg_loss += loss.item()
         loss.backward()
@@ -45,15 +37,13 @@ def eval_fn(data_loader, model, device):
             ids = d["ids"]
             token_type_ids = d["token_type_ids"]
             mask = d["mask"]
-            targets = d["targets"]
-
+            targets = d["target"]
             ids = ids.to(device, dtype=torch.long)
             token_type_ids = token_type_ids.to(device, dtype=torch.long)
             mask = mask.to(device, dtype=torch.long)
             targets = targets.to(device, dtype=torch.long)
-
-            outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-            loss = loss_fn(outputs, targets)
+            loss, score = model(ids=ids, mask=mask, token_type_ids=token_type_ids, labels = targets)
+            print(score)
             pgbar.set_postfix(loss = loss.item())
             avg_loss += loss.item()
     return avg_loss/len(data_loader)
@@ -72,14 +62,5 @@ def inference_fn(data_loader, model, device):
             token_type_ids = token_type_ids.to(device, dtype=torch.long)
             mask = mask.to(device, dtype=torch.long)
             outputs = model(ids=ids, mask=mask, token_type_ids=token_type_ids)
-            final_output = outputs.cpu().detach().numpy()[0]
-            final_output = final_output.astype(int) + 1000
-            final_output = final_output.tolist()
-
-            # Detokenize
-            tokens = TOKENIZER.convert_ids_to_tokens(final_output)
-            print(tokens)
-            text = ' '.join([x for x in tokens])
-            fine_text = text.replace(' ##', '')
-            final_output.extend(fine_text)
+            fin_outputs.extend(outputs)
     return fin_outputs
