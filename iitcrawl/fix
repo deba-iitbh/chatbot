@@ -1,0 +1,7 @@
+#!/bin/sh
+
+for file in ./output/*.txt
+do
+        mv "$file" temp.txt
+        cat temp.txt | tr -cd '[:alnum:]\n._!@#$%^& -' > "$file"
+done

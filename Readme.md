@@ -52,6 +52,18 @@ To run the chatbot, execute
 python chatbot.py
 ```
 
+# TODO
+
+- [X] Download the GPT4All model from git [repo](https://github.com/nomic-ai/gpt4all).
+- [X] Install langchain
+```sh
+pip install langchain
+```
+- [X] Write a langchain script to create a vector Db and create the embeddings.
+- [X] Scrap the IIT Bhilai Website using scrappy. Follow Abhishek Thakur [Video](https://www.youtube.com/watch?v=T1hdz3eU3bg).
+- [X] Write a basic chatbot
+- [X] Write a gradio script for UI for the chatbot
+
 ### BERT Model
 Using the custom dataset, we fine tuned the bart-base-uncased BERT model on Masked Language Modelling task to train it on the domain of IIT Corpus.
 Using the fine tuned BERT model, we trained it on the custom QA dataset for our chatbot.
